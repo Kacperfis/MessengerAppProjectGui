@@ -7,7 +7,7 @@
 #include <QListWidget>
 
 #include <boost/asio/io_context.hpp>
-#include "Core.hpp"
+#include "ServerCore.hpp"
 
 class ServerGui : public QWidget
 {

@@ -1,39 +1,14 @@
-#include "Core.hpp"
+#include "ClientCore.hpp"
 
 namespace messengerapp
 {
-
-//====== Server Core ======
-
-ServerCore::ServerCore(boost::asio::io_context& io, int port) : 
-    io_(io), 
-    server_(std::make_shared<connection::server::Server>(io_, port))
-{
-}
-
-ServerCore::~ServerCore()
-{
-    stopServer();
-}
-
-void ServerCore::startServer()
-{
-    server_->start();
-}
-
-void ServerCore::stopServer()
-{
-    server_->stop();
-}
-
-//====== Client Core ======
 
 ClientCore::ClientCore(
     boost::asio::io_context& io,
     int id,
     const std::string& userDatabasePath,
-    const std::string& adminDatabasePath) : 
-    io_(io), 
+    const std::string& adminDatabasePath) :
+    io_(io),
     id_(id),
     userDatabasePath_(userDatabasePath),
     adminDatabasePath_(adminDatabasePath),
