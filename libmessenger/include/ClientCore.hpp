@@ -21,27 +21,10 @@
 #include "libmessenger/src/Registration/AdminRegistrationHandler.hpp"
 #include "libmessenger/src/Database/UserDatabaseController.hpp"
 #include "libmessenger/src/Database/AdminDatabaseController.hpp"
-#include "libmessenger/src/Connection/Server/Server.hpp"
 #include "libmessenger/src/Connection/Client/Client.hpp"
 
 namespace messengerapp
 {
-
-class ServerCore
-{
-public:
-    ServerCore(
-        boost::asio::io_context& io,
-        int port);
-    ~ServerCore();
-
-    boost::asio::io_context& io_;
-    std::shared_ptr<connection::server::Server> server_;
-
-    // server
-    void startServer();
-    void stopServer();
-};
 
 class ClientCore
 {
@@ -72,23 +55,19 @@ public:
     std::shared_ptr<login::UserLoginHub> userLoginHub_;
     std::shared_ptr<login::AdminLoginHub> adminLoginHub_;
 
-    // login
     bool loginUser(const std::string& login, const std::string& password);
     bool loginAdmin(const std::string& login, const std::string& password);
 
-    // registration
     void registerUser(const std::string& login, const std::string& password);
     void registerAdmin(const std::string& login, const std::string& password);
 
-    // client
     void startClient(const std::string& host, const std::string& port);
     void stopClient();
     void joinChat(const std::string& username);
     void leaveChat(const std::string& sender);
     void sendMessage(const std::string& sender, const std::string& recipient, const std::string& message);
 
-    void setEventHandler(ChatEventHandler eventHandler);    
+    void setEventHandler(ChatEventHandler eventHandler);
 };
-
 
 }  // namespace messengerapp

@@ -19,7 +19,17 @@ endif()
 
 # ── External deps ------------------------------------------------------------
 find_package(OpenSSL REQUIRED)
-find_package(Boost       REQUIRED COMPONENTS system thread)   # <── NEW
+
+# ── Fetch Boost if not supplied via system packages ─────────────────────────
+include(FetchContent)
+set(BOOST_ENABLE_CMAKE ON)
+set(BOOST_INCLUDE_LIBRARIES thread system)
+FetchContent_Declare(
+    boost
+    URL https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz
+)
+FetchContent_MakeAvailable(boost)
+find_package(Boost CONFIG REQUIRED COMPONENTS system thread)
 if (BUILD_GUI)
     find_package(Qt6 REQUIRED COMPONENTS Widgets)
 endif()
