@@ -14,7 +14,7 @@
 #include <QParallelAnimationGroup>
 
 #include "Event.hpp"
-#include "ClientCore.hpp"
+#include "Core.hpp"
 
 class ClientGui : public QWidget
 {
