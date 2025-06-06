@@ -77,8 +77,8 @@ public:
     bool loginAdmin(const std::string& login, const std::string& password);
 
     // registration
-    void registerUser(const std::string& login, const std::string& password);
-    void registerAdmin(const std::string& login, const std::string& password);
+    bool registerUser(const std::string& login, const std::string& password);
+    bool registerAdmin(const std::string& login, const std::string& password);
 
     // client
     void startClient(const std::string& host, const std::string& port);

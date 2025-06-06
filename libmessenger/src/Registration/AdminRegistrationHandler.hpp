@@ -14,16 +14,10 @@ class AdminRegistrationHandler : public interface::IRegistrationHandler
 {
 public:
     AdminRegistrationHandler(const std::shared_ptr<interface::IDatabaseController>& adminDatabaseController);
-    bool registrationTrigger() override;
+    bool registerPerson(const std::string& login, const std::string& password) override;
     std::map<std::string, std::string> getData() override;
-    bool isPersonAlreadyRegistered(const std::map<std::string, std::string>& data) override;
-    void saveDataForLoginAuthentication(const std::string& login, const std::string& password) override;
+    bool isPersonAlreadyRegistered(const std::map<std::string, std::string>& data, const std::string& login) override;
 private:
-    bool registerAdmin();
-
-    std::string login_;
-    std::string password_;
-
     std::shared_ptr<interface::IDatabaseController> adminDatabaseController_;
     Logger logger_;
 };

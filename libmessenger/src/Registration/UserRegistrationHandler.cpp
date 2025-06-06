@@ -9,35 +9,31 @@ UserRegistrationHandler::UserRegistrationHandler(
     userDatabaseController_(userDatabaseController),
     logger_("UserRegistrationHandler") {}
 
-bool UserRegistrationHandler::registrationTrigger()
-{
-    return registerUser();
-}
-
 std::map<std::string, std::string> UserRegistrationHandler::getData()
 {
     userDatabaseController_->loadDatabase();
     return userDatabaseController_->getData();
 }
 
-bool UserRegistrationHandler::registerUser()
+bool UserRegistrationHandler::registerPerson(const std::string& login, const std::string& password)
 {
     auto data = getData();
-    if (!isPersonAlreadyRegistered(data))
+    if (isPersonAlreadyRegistered(data, login))
     {
-        userDatabaseController_->registerPerson(login_, password_);
-        logger_.log(Severity::info, "User registered succesfully");
-        return true;
+        return false;
     }
-    return false;
+
+    userDatabaseController_->registerPerson(login, password);
+    logger_.log(Severity::info, "User registered succesfully");
+    return true;
 }
 
-bool UserRegistrationHandler::isPersonAlreadyRegistered(const std::map<std::string, std::string>& data)
+bool UserRegistrationHandler::isPersonAlreadyRegistered(const std::map<std::string, std::string>& data, const std::string& login)
 {
     auto userData = std::ranges::find_if(data,
-    [this](const auto& item)
+    [&login](const auto& item)
     {
-        return item.first == login_;
+        return item.first == login;
     });
 
     if (userData != data.end())
@@ -47,12 +43,6 @@ bool UserRegistrationHandler::isPersonAlreadyRegistered(const std::map<std::stri
     }
 
     return false;
-}
-
-void UserRegistrationHandler::saveDataForLoginAuthentication(const std::string& login, const std::string& password)
-{
-    login_ = login;
-    password_ = password;
 }
 
 } // namespace registration

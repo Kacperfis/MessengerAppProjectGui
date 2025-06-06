@@ -26,10 +26,8 @@ TEST(UserLoginHubTests, shouldLoginAndLogoutSuccesfully)
     EXPECT_CALL(*registrationHandlerMock, getData())
         .WillOnce(Return(registeredUsersData));
 
-    EXPECT_CALL(*registrationHandlerMock, saveDataForLoginAuthentication("test_user", "test_password"))
-        .Times(1);
 
-    EXPECT_CALL(*registrationHandlerMock, isPersonAlreadyRegistered(registeredUsersData))
+    EXPECT_CALL(*registrationHandlerMock, isPersonAlreadyRegistered(registeredUsersData, loginData->getLogin()))
         .WillOnce(Return(true));
 
     EXPECT_TRUE(LoginHub->login(loginData, registrationHandlerMock));
@@ -53,10 +51,7 @@ TEST(UserLoginHubTests, shouldNotLoginDueToNotExistingUserDataInDatabase)
     EXPECT_CALL(*registrationHandlerMock, getData())
         .WillOnce(Return(registeredUsersData));
 
-    EXPECT_CALL(*registrationHandlerMock, saveDataForLoginAuthentication("test_user2", "test_password2"))
-        .Times(1);
-
-    EXPECT_CALL(*registrationHandlerMock, isPersonAlreadyRegistered(registeredUsersData))
+    EXPECT_CALL(*registrationHandlerMock, isPersonAlreadyRegistered(registeredUsersData, loginData->getLogin()))
         .WillOnce(Return(false));
 
     EXPECT_FALSE(LoginHub->login(loginData, registrationHandlerMock));

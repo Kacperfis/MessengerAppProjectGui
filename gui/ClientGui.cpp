@@ -64,6 +64,7 @@ ClientGui::ClientGui(std::shared_ptr<messengerapp::ClientCore> core,
     stack_ = new QStackedWidget(this);
     buildHomePage();
     buildLoginPage();
+    buildRegistrationPage();
     buildChatPage();
 
     auto *root = new QVBoxLayout(this);
@@ -105,7 +106,10 @@ void ClientGui::buildHomePage()
     v->addStretch(2);
 
     connect(homeLoginBtn_, &QPushButton::clicked,
-            this, &ClientGui::onHomeLoginClicked);
+        this, &ClientGui::onHomeLoginClicked);
+
+    connect(homeRegisterBtn_, &QPushButton::clicked,
+        this, &ClientGui::onHomeRegisterClicked);
 
     stack_->addWidget(homePage_);
 }
@@ -128,6 +132,26 @@ void ClientGui::buildLoginPage()
             this, &ClientGui::onLoginClicked);
 
     stack_->addWidget(loginPage_);
+}
+
+void ClientGui::buildRegistrationPage()
+{
+    registrationPage_ = new QWidget(this);
+    auto *form = new QFormLayout(registrationPage_);
+
+    regLoginEdit_ = new QLineEdit(registrationPage_);
+    regPasswordEdit_ = new QLineEdit(registrationPage_);
+    regPasswordEdit_->setEchoMode(QLineEdit::Password);
+    registerBtn_ = new QPushButton("Register", registrationPage_);
+
+    form->addRow("New Login:", regLoginEdit_);
+    form->addRow("New Password:", regPasswordEdit_);
+    form->addRow(registerBtn_);
+
+    connect(registerBtn_, &QPushButton::clicked,
+        this, &ClientGui::onRegistrationClicked);
+
+    stack_->addWidget(registrationPage_);
 }
 
 void ClientGui::buildChatPage()
@@ -171,6 +195,13 @@ void ClientGui::onHomeLoginClicked()
     animatedSwitchTo(loginPage_);
 }
 
+void ClientGui::onHomeRegisterClicked()
+{
+    regLoginEdit_->clear();
+    regPasswordEdit_->clear();
+    animatedSwitchTo(registrationPage_);
+}
+
 void ClientGui::onLoginClicked()
 {
     const std::string login    = loginEdit_->text().toStdString();
@@ -184,11 +215,51 @@ void ClientGui::onLoginClicked()
     }
     if (!clientCore_->loginUser(login, password))
     {
-        QMessageBox::critical(this, "Login failed",
+        QMessageBox::warning(this, "Login failed",
                               "Invalid credentials");
         return;
     }
+    QMessageBox::information(this, "Login", "Login Successfull");
+    loginEdit_->clear();
+    passwordEdit_->clear();
+
     clientCore_->joinChat(login);
+    setChatControlsEnabled(true);
+    animatedSwitchTo(chatPage_);
+}
+
+void ClientGui::onRegistrationClicked()
+{
+    const std::string newLogin = regLoginEdit_->text().toStdString();
+    const std::string newPassword = regPasswordEdit_->text().toStdString();
+
+    if (newLogin.empty() || newPassword.empty())
+    {
+        QMessageBox::warning(this, "Registration",
+                             "Login and password cannot be empty");
+        return;
+    }
+
+    if (!clientCore_->registerUser(newLogin, newPassword))
+    {
+        QMessageBox::warning(this, "Registration failed",
+                              "User is already registered");
+        regLoginEdit_->clear();
+        regPasswordEdit_->clear();
+        return;
+    }
+    QMessageBox::information(this, "Registration", "Registration Successfull");
+    regLoginEdit_->clear();
+    regPasswordEdit_->clear();
+
+    if (!clientCore_->loginUser(newLogin, newPassword))
+    {
+        QMessageBox::critical(this, "Login failed",
+                              "Unknown error");
+        return;
+    }
+
+    clientCore_->joinChat(newLogin);
     setChatControlsEnabled(true);
     animatedSwitchTo(chatPage_);
 }

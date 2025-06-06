@@ -11,8 +11,7 @@ bool UserLoginHub::login(const std::shared_ptr<LoginData>& loginData, const std:
     logger_.log(Severity::info, "Logging to the User account");
     loginData_ = loginData;
     auto registeredUsersData = registrationHandler->getData();
-    registrationHandler->saveDataForLoginAuthentication(loginData_->getLogin(), loginData_->getPassword());
-    if (registrationHandler->isPersonAlreadyRegistered(registeredUsersData))
+    if (registrationHandler->isPersonAlreadyRegistered(registeredUsersData, loginData_->getLogin()))
     {
         if (helpers::checkUserCredentials(loginData_->getLogin(), loginData_->getPassword(), registeredUsersData))
         {

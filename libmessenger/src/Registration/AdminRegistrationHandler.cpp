@@ -9,10 +9,6 @@ AdminRegistrationHandler::AdminRegistrationHandler(
     adminDatabaseController_(adminDatabaseController),
     logger_("AdminRegistrationHandler") {}
 
-bool AdminRegistrationHandler::registrationTrigger()
-{
-    return registerAdmin();
-}
 
 std::map<std::string, std::string> AdminRegistrationHandler::getData()
 {
@@ -20,24 +16,25 @@ std::map<std::string, std::string> AdminRegistrationHandler::getData()
     return adminDatabaseController_->getData();
 }
 
-bool AdminRegistrationHandler::registerAdmin()
+bool AdminRegistrationHandler::registerPerson(const std::string& login, const std::string& password)
 {
     auto data = getData();
-    if (!isPersonAlreadyRegistered(data))
+    if (isPersonAlreadyRegistered(data, login))
     {
-        adminDatabaseController_->registerPerson(login_, password_);
-        logger_.log(Severity::info, "Admin registered succesfully");
-        return true;
+        return false;
     }
-    return false;
+
+    adminDatabaseController_->registerPerson(login, password);
+    logger_.log(Severity::info, "Admin registered succesfully");
+    return true;
 }
 
-bool AdminRegistrationHandler::isPersonAlreadyRegistered(const std::map<std::string, std::string>& data)
+bool AdminRegistrationHandler::isPersonAlreadyRegistered(const std::map<std::string, std::string>& data, const std::string& login)
 {
     auto adminData = std::ranges::find_if(data,
-    [this](const auto& item)
+    [&login](const auto& item)
     {
-        return item.first == login_;
+        return item.first == login;
     });
 
     if (adminData != data.end())
@@ -47,12 +44,6 @@ bool AdminRegistrationHandler::isPersonAlreadyRegistered(const std::map<std::str
     }
 
     return false;
-}
-
-void AdminRegistrationHandler::saveDataForLoginAuthentication(const std::string& login, const std::string& password)
-{
-    login_ = login;
-    password_ = password;
 }
 
 } // namespace registration

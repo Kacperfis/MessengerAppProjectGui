@@ -26,12 +26,15 @@ public:
 
 private slots:
     void onHomeLoginClicked();
+    void onHomeRegisterClicked();
     void onLoginClicked();
+    void onRegistrationClicked();
     void onSendClicked();
 
 private:
     void buildHomePage();
     void buildLoginPage();
+    void buildRegistrationPage();
     void buildChatPage();
     void setChatControlsEnabled(bool enabled);
     void animatedSwitchTo(QWidget *page);
@@ -52,6 +55,12 @@ private:
     QLineEdit *loginEdit_  { nullptr };
     QLineEdit *passwordEdit_ { nullptr };
     QPushButton *loginBtn_ { nullptr };
+
+    /* registration page */
+    QWidget   *registrationPage_  { nullptr };
+    QLineEdit *regLoginEdit_ { nullptr };
+    QLineEdit *regPasswordEdit_ { nullptr };
+    QPushButton *registerBtn_ { nullptr };
 
     /* chat page */
     QWidget     *chatPage_   { nullptr };

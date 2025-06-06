@@ -60,16 +60,14 @@ bool ClientCore::loginAdmin(const std::string& login, const std::string& passwor
     return adminLoginHub_->login(loginData, adminRegistrationHandler_);
 }
 
-void ClientCore::registerUser(const std::string& login, const std::string& password)
+bool ClientCore::registerUser(const std::string& login, const std::string& password)
 {
-    userRegistrationHandler_->saveDataForLoginAuthentication(login, password);
-    userRegistrationHandler_->registrationTrigger();
+   return userRegistrationHandler_->registerPerson(login, password);
 }
 
-void ClientCore::registerAdmin(const std::string& login, const std::string& password)
+bool ClientCore::registerAdmin(const std::string& login, const std::string& password)
 {
-    adminRegistrationHandler_->saveDataForLoginAuthentication(login, password);
-    adminRegistrationHandler_->registrationTrigger();
+    return adminRegistrationHandler_->registerPerson(login, password);
 }
 
 void ClientCore::startClient(const std::string& host, const std::string& port)

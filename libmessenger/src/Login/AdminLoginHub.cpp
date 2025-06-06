@@ -13,9 +13,8 @@ bool AdminLoginHub::login(const std::shared_ptr<LoginData>& loginData, const std
     logger_.log(Severity::info, "Logging to the Admin account");
     loginData_ = loginData;
     auto registeredAdminData = registrationHandler->getData();
-    registrationHandler->saveDataForLoginAuthentication(loginData_->getLogin(), loginData_->getPassword());
 
-    if (registrationHandler->isPersonAlreadyRegistered(registeredAdminData))
+    if (registrationHandler->isPersonAlreadyRegistered(registeredAdminData, loginData_->getLogin()))
     {
         if (helpers::checkUserCredentials(loginData_->getLogin(), loginData_->getPassword(), registeredAdminData))
         {

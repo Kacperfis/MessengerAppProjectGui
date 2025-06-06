@@ -26,7 +26,7 @@ TEST(UserRegistrationHandlerTests, shouldTriggerRegistrationAndRegisterUserSucce
     EXPECT_CALL(*databaseControllerMock, registerPerson(_,_))
         .Times(1);
 
-    auto result = sut->registrationTrigger();
+    auto result = sut->registerPerson("test_user", "test_password");
     EXPECT_TRUE(result);
 }
 
@@ -45,7 +45,6 @@ TEST(UserRegistrationHandlerTests, shouldTriggerRegistrationAndNotRegisterAlread
     EXPECT_CALL(*databaseControllerMock, getData())
         .WillOnce(Return(registeredUsersData));
 
-    sut->saveDataForLoginAuthentication("test_user", "test_password");
-    auto result = sut->registrationTrigger();
+    auto result = sut->registerPerson("test_user", "test_password");
     EXPECT_FALSE(result);
 }
