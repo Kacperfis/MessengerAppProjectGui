@@ -10,7 +10,6 @@ namespace connection::helpers::message
 
 void MessageHandler::handleMessage(
     const Message& message,
-    const std::shared_ptr<interface::IEncryptionManager>& encryptionManager,
     const ChatEventHandler& eventHandler) noexcept
 {
     Logger logger("MessageHandler");
@@ -24,7 +23,7 @@ void MessageHandler::handleMessage(
         }
         case MessageType::MESSAGE:
         {
-            handleStandardMessage(message, encryptionManager, eventHandler);
+            handleStandardMessage(message, eventHandler);
             break;
         }
     }
@@ -55,13 +54,12 @@ void MessageHandler::handleCheckAvailabilityMessage(const Message& message, cons
 
 void MessageHandler::handleStandardMessage(
     const Message& message,
-    const std::shared_ptr<interface::IEncryptionManager>& encryptionManager,
     const ChatEventHandler& eventHandler) noexcept
 {
     ChatEvent event {ChatEvent::STANDARD_MESSAGE};
     event.sender = message.sender;
-    event.message = encryptionManager->decryptString(message.content);
-    std::cout << "[" << message.sender << "]: " << encryptionManager->decryptString(message.content) << std::endl;
+    event.message = message.content;
+    std::cout << "[" << message.sender << "]: " << message.content << std::endl;
 
     if (eventHandler)
         eventHandler(event);

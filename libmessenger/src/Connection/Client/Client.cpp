@@ -45,7 +45,7 @@ void Client::readData()
 
                 logger_.log(Severity::info, "received message: " + message);
                 auto decodedMessage = helpers::message::MessageDecoder::decodeMessage(message);
-                helpers::message::MessageHandler::handleMessage(decodedMessage, encryptionManager_, eventHandler_);
+                helpers::message::MessageHandler::handleMessage(decodedMessage, eventHandler_);
                 data_.erase(0, length);
                 readData();
             }
@@ -88,7 +88,7 @@ void Client::login(const std::string& recipient)
 
 void Client::sendMessage(const std::string& sender, const std::string& recipient, const std::string& message)
 {
-    sendData("MESSAGE|" + sender + "|" + recipient + "|" + encryptionManager_->encryptString(message));
+    sendData("MESSAGE|" + sender + "|" + recipient + "|" + message);
 }
 
 void Client::logout(const std::string& sender)

@@ -32,15 +32,26 @@ class ServerCore
 public:
     ServerCore(
         boost::asio::io_context& io,
-        int port);
+        int port,
+        const std::string& adminDatabasePath);
     ~ServerCore();
 
     boost::asio::io_context& io_;
     std::shared_ptr<connection::server::Server> server_;
 
+    std::shared_ptr<database::AdminDatabaseController> adminDatabaseController_;
+    std::shared_ptr<registration::AdminRegistrationHandler> adminRegistrationHandler_;
+    std::shared_ptr<login::AdminLoginHub> adminLoginHub_;
+
     // server
     void startServer();
     void stopServer();
+
+    // login
+    bool loginAdmin(const std::string& login, const std::string& password);
+
+    // registration
+    bool registerAdmin(const std::string& login, const std::string& password);
 };
 
 class ClientCore
@@ -89,6 +100,5 @@ public:
 
     void setEventHandler(ChatEventHandler eventHandler);    
 };
-
 
 }  // namespace messengerapp

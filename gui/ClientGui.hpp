@@ -12,6 +12,8 @@
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
+#include <QListWidgetItem>
+#include <QStackedLayout>
 
 #include "Event.hpp"
 #include "Core.hpp"
@@ -30,12 +32,16 @@ private slots:
     void onLoginClicked();
     void onRegistrationClicked();
     void onSendClicked();
+    void onUserDoubleClicked(QListWidgetItem *item);
+    void onLeaveChatClicked();
 
 private:
     void buildHomePage();
     void buildLoginPage();
     void buildRegistrationPage();
     void buildChatPage();
+    void buildUserListPage();
+
     void setChatControlsEnabled(bool enabled);
     void animatedSwitchTo(QWidget *page);
     void handleChatEvent(const ChatEvent &event);
@@ -64,9 +70,16 @@ private:
 
     /* chat page */
     QWidget     *chatPage_   { nullptr };
+    QLabel      *chatPartnerLabel_{ nullptr };
     QTextEdit   *history_    { nullptr };
     QLineEdit   *messageEdit_{ nullptr };
     QPushButton *sendBtn_    { nullptr };
-    QGroupBox   *onlineGroup_{ nullptr };
-    QListWidget *onlineList_ { nullptr };
+    QPushButton *leaveChatBtn_  { nullptr };
+
+    /* user list page */
+    QWidget        *usersPage_  { nullptr };
+    QListWidget    *usersList_    {nullptr};
+
+    std::string currentUserLogin_;
+    std::string currentRecipient_;
 };

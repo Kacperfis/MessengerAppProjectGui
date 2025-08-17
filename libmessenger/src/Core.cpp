@@ -5,9 +5,12 @@ namespace messengerapp
 
 //====== Server Core ======
 
-ServerCore::ServerCore(boost::asio::io_context& io, int port) : 
+ServerCore::ServerCore(boost::asio::io_context& io, int port, const std::string& adminDatabasePath) : 
     io_(io), 
-    server_(std::make_shared<connection::server::Server>(io_, port))
+    server_(std::make_shared<connection::server::Server>(io_, port)),
+    adminDatabaseController_(std::make_shared<database::AdminDatabaseController>(adminDatabasePath)),
+    adminRegistrationHandler_(std::make_shared<registration::AdminRegistrationHandler>(adminDatabaseController_)),
+    adminLoginHub_(std::make_shared<login::AdminLoginHub>())
 {
 }
 
@@ -24,6 +27,17 @@ void ServerCore::startServer()
 void ServerCore::stopServer()
 {
     server_->stop();
+}
+
+bool ServerCore::loginAdmin(const std::string& login, const std::string& password)
+{
+    auto loginData = std::make_shared<login::LoginData>(login, password);
+    return adminLoginHub_->login(loginData, adminRegistrationHandler_);
+}
+
+bool ServerCore::registerAdmin(const std::string& login, const std::string& password)
+{
+   return adminRegistrationHandler_->registerPerson(login, password);
 }
 
 //====== Client Core ======

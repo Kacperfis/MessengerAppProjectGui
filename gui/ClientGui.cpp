@@ -5,6 +5,8 @@
 #include <QFormLayout>
 #include <QMessageBox>
 #include <QMetaObject>
+#include <QString>
+#include <QDateTime>
 
 ClientGui::ClientGui(std::shared_ptr<messengerapp::ClientCore> core,
                      QWidget *parent)
@@ -65,6 +67,7 @@ ClientGui::ClientGui(std::shared_ptr<messengerapp::ClientCore> core,
     buildHomePage();
     buildLoginPage();
     buildRegistrationPage();
+    buildUserListPage();
     buildChatPage();
 
     auto *root = new QVBoxLayout(this);
@@ -154,36 +157,53 @@ void ClientGui::buildRegistrationPage()
     stack_->addWidget(registrationPage_);
 }
 
+void ClientGui::buildUserListPage()
+{
+    usersPage_ = new QWidget(this);
+    auto *layout = new QVBoxLayout(usersPage_);
+    usersList_ = new QListWidget(usersPage_);
+    layout->addWidget(usersList_);
+    connect(usersList_, &QListWidget::itemDoubleClicked,
+            this, &ClientGui::onUserDoubleClicked);
+
+    stack_->addWidget(usersPage_);
+}
+
 void ClientGui::buildChatPage()
 {
     chatPage_ = new QWidget(this);
+
+    chatPartnerLabel_ = new QLabel(chatPage_);
+    chatPartnerLabel_->setAlignment(Qt::AlignCenter);
 
     history_ = new QTextEdit(chatPage_);
     history_->setReadOnly(true);
 
     messageEdit_ = new QLineEdit(chatPage_);
     sendBtn_     = new QPushButton("Send", chatPage_);
+    leaveChatBtn_   = new QPushButton("Leave Chat", chatPage_);
+
+    auto *headerRow = new QHBoxLayout;
+    headerRow->addWidget(leaveChatBtn_);
+    headerRow->addStretch();
+    headerRow->addWidget(chatPartnerLabel_);
+    headerRow->addStretch();
 
     auto *msgRow = new QHBoxLayout;
     msgRow->addWidget(messageEdit_);
     msgRow->addWidget(sendBtn_);
 
-    auto *leftCol = new QVBoxLayout;
-    leftCol->addWidget(history_);
-    leftCol->addLayout(msgRow);
+    auto *layout = new QVBoxLayout(chatPage_);
+    layout->addLayout(headerRow);
+    layout->addWidget(history_);
+    layout->addLayout(msgRow);
+    chatPage_->setLayout(layout);
 
-    onlineGroup_ = new QGroupBox("Active Users", chatPage_);
-    onlineList_  = new QListWidget(onlineGroup_);
-    auto *onlineLayout = new QVBoxLayout(onlineGroup_);
-    onlineLayout->addWidget(onlineList_);
-    onlineGroup_->setFixedWidth(180);
+    connect(sendBtn_, &QPushButton::clicked,
+            this, &ClientGui::onSendClicked);
 
-    auto *mainRow = new QHBoxLayout(chatPage_);
-    mainRow->addLayout(leftCol, 3);
-    mainRow->addWidget(onlineGroup_, 1);
-
-    connect(sendBtn_,  &QPushButton::clicked,
-            this,      &ClientGui::onSendClicked);
+    connect(leaveChatBtn_, &QPushButton::clicked,
+            this, &ClientGui::onLeaveChatClicked);
 
     stack_->addWidget(chatPage_);
 }
@@ -219,13 +239,14 @@ void ClientGui::onLoginClicked()
                               "Invalid credentials");
         return;
     }
-    QMessageBox::information(this, "Login", "Login Successfull");
+
     loginEdit_->clear();
     passwordEdit_->clear();
 
     clientCore_->joinChat(login);
-    setChatControlsEnabled(true);
-    animatedSwitchTo(chatPage_);
+    currentUserLogin_ = login;
+    setChatControlsEnabled(false);
+    animatedSwitchTo(usersPage_);
 }
 
 void ClientGui::onRegistrationClicked()
@@ -260,16 +281,29 @@ void ClientGui::onRegistrationClicked()
     }
 
     clientCore_->joinChat(newLogin);
-    setChatControlsEnabled(true);
-    animatedSwitchTo(chatPage_);
+    currentUserLogin_ = newLogin;
+    setChatControlsEnabled(false);
+    animatedSwitchTo(usersPage_);
 }
 
 void ClientGui::onSendClicked()
 {
-    const auto txt = messageEdit_->text();
+    QString txt = messageEdit_->text();
     if (txt.isEmpty()) return;
 
-    clientCore_->sendMessage("", "", txt.toStdString());
+    txt = txt.trimmed();
+
+    std::string cleanedMessage = txt.toStdString();
+
+    cleanedMessage.erase(std::remove(cleanedMessage.begin(), cleanedMessage.end(), '\n'), cleanedMessage.end());
+    cleanedMessage.erase(std::remove(cleanedMessage.begin(), cleanedMessage.end(), '\r'), cleanedMessage.end());
+
+    clientCore_->sendMessage(currentUserLogin_, currentRecipient_, cleanedMessage);
+
+    QString timestamp = QDateTime::currentDateTime().toString("[hh:mm:ss] ");
+    history_->append(timestamp + QString::fromStdString(currentUserLogin_) + ": " + QString::fromStdString(cleanedMessage));
+    history_->append("");
+
     messageEdit_->clear();
 }
 
@@ -278,7 +312,7 @@ void ClientGui::setChatControlsEnabled(bool en)
     history_->setEnabled(en);
     messageEdit_->setEnabled(en);
     sendBtn_->setEnabled(en);
-    onlineGroup_->setEnabled(en);
+    chatPartnerLabel_->setEnabled(en);
 }
 
 void ClientGui::animatedSwitchTo(QWidget *page)
@@ -315,13 +349,39 @@ void ClientGui::handleChatEvent(const ChatEvent &ev)
     using Type = ChatEvent::Type;
     if (ev.type == Type::CHECK_AVAILABILITY)
     {
-        onlineList_->clear();
+        usersList_->clear();
         for (const auto &user : ev.activeUsers)
-            onlineList_->addItem(QString::fromStdString(user));
+            usersList_->addItem(QString::fromStdString(user));
     }
     else if (ev.type == Type::STANDARD_MESSAGE)
     {
-        history_->append(QString::fromStdString(ev.sender) + ": "
+        QString timestamp = QDateTime::currentDateTime().toString("[hh:mm:ss] ");
+        history_->append(timestamp + QString::fromStdString(ev.sender) + ": "
                          + QString::fromStdString(ev.message));
+        history_->append("");
     }
+}
+
+void ClientGui::onUserDoubleClicked(QListWidgetItem *item)
+{
+    if (!item || item->text().isEmpty()) return;
+    currentRecipient_ = item->text().trimmed().toStdString();
+    chatPartnerLabel_->setText("Chat with " + item->text());
+    setChatControlsEnabled(true);
+    history_->clear();
+    animatedSwitchTo(chatPage_);
+}
+
+void ClientGui::onLeaveChatClicked()
+{
+    setChatControlsEnabled(false);
+    history_->clear();
+    chatPartnerLabel_->clear();
+    currentRecipient_.clear();
+    if (!currentUserLogin_.empty())
+    {
+        clientCore_->leaveChat(currentUserLogin_);
+    }
+    animatedSwitchTo(usersPage_);
+    clientCore_->joinChat(currentUserLogin_);
 }

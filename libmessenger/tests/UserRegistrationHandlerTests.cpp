@@ -15,7 +15,7 @@ TEST(UserRegistrationHandlerTests, shouldTriggerRegistrationAndRegisterUserSucce
     auto databaseControllerMock = std::make_shared<mocks::DatabaseControllerMock>();
     auto sut = std::make_shared<registration::UserRegistrationHandler>(databaseControllerMock);
     std::map<std::string, std::string> registeredUsersData;
-    registeredUsersData.insert(std::make_pair("test_user", "test_password"));
+    registeredUsersData.insert(std::make_pair("test_user2", "test_password2"));
 
     EXPECT_CALL(*databaseControllerMock, loadDatabase())
         .Times(1);
