@@ -26,6 +26,8 @@ Separate Client / Server applications
 
 Server is hosted on localhost
 
+Multithreading - Client send/receive messages asynchronously
+
 # 🛠️ Tech Stack
 
 C++17/20
