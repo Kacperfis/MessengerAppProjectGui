@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <mutex>
 
 #include "Session.hpp"
 #include "Common/Logger.hpp"
@@ -25,6 +26,7 @@ private:
     boost::asio::io_context& ioContext_;
     boost::asio::ip::tcp::acceptor acceptor_;
     std::map<std::string, std::shared_ptr<session::Session>> activeSessions_;
+    std::mutex sessionsMutex_;
     std::jthread ioThread_;
     Logger logger_;
 };

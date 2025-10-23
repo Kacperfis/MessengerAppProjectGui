@@ -30,6 +30,7 @@ private:
     void sendData(const std::string& data);
 
     boost::asio::io_context& ioContext_;
+    boost::asio::strand<boost::asio::io_context::executor_type> strand_;
     boost::asio::ip::tcp::socket socket_;
     boost::asio::ip::tcp::resolver resolver_;
     std::shared_ptr<encryption::EncryptionManager> encryptionManager_;

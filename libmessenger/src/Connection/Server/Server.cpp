@@ -20,7 +20,7 @@ void Server::acceptConnection()
     {
         if (!errorCode)
         {
-            auto session = std::make_shared<session::Session>(std::move(socket), activeSessions_);
+            auto session = std::make_shared<session::Session>(ioContext_, std::move(socket), activeSessions_, sessionsMutex_);
             session->start();
         }
         acceptConnection();

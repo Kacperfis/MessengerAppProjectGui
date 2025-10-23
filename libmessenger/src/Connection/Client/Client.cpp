@@ -13,6 +13,7 @@ namespace connection::client
 
 Client::Client(boost::asio::io_context& io, int id) :
     ioContext_(io),
+    strand_(boost::asio::make_strand(io)),
     id_(id),
     socket_(ioContext_),
     resolver_(ioContext_),
@@ -27,26 +28,33 @@ void Client::setEventHandler(ChatEventHandler eventHandler)
 void Client::connect(const std::string& host, const std::string& port)
 {
     std::osyncstream(std::cout) << "[" << id_ << "]client connect\n";
-    boost::asio::ip::tcp::resolver resolver(ioContext_);
-    boost::asio::connect(socket_, resolver.resolve(host, port));
-    readData();
+    auto self = shared_from_this();
+    boost::asio::connect(socket_, resolver_.resolve(host, port));
+    boost::asio::post(strand_, [this, self]() { readData(); });
 }
 
 void Client::readData()
 {
+    auto self = shared_from_this();
     boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), '\n',
-        [this](boost::system::error_code errorCode, std::size_t length)
+        boost::asio::bind_executor(strand_,
+        [this, self](boost::system::error_code errorCode, std::size_t length)
         {
             if (!errorCode)
             {
                 logger_.log(Severity::info, "received " + std::to_string(length) + " bytes of data");
                 std::cout <<  "client received " + std::to_string(length) + " bytes of data" << std::endl;
-                std::string message(data_.substr(0, length));
+
+                std::string message;
+                {
+                    std::lock_guard<std::mutex> lock(mtx_);
+                    message = data_.substr(0, length);
+                    data_.erase(0, length);
+                }
 
                 logger_.log(Severity::info, "received message: " + message);
                 auto decodedMessage = helpers::message::MessageDecoder::decodeMessage(message);
                 helpers::message::MessageHandler::handleMessage(decodedMessage, eventHandler_);
-                data_.erase(0, length);
                 readData();
             }
             else if (errorCode == boost::asio::error::operation_aborted)
@@ -57,7 +65,7 @@ void Client::readData()
             {
                 logger_.log(Severity::warning, "read operation failed with error: " + errorCode.message());
             }
-        }
+        })
     );
 }
 
@@ -66,18 +74,22 @@ void Client::sendData(const std::string& data)
     logger_.log(Severity::info, "sending " + data);
     std::cout << "client sending " + data << std::endl;
 
-    boost::asio::post(ioContext_,
-    [self = shared_from_this(), msg = std::move(data)]
+    auto self = shared_from_this();
+    std::string message = data + '\n';
+
+    boost::asio::post(strand_,
+    [self, msg = std::move(message)]()
     {
         boost::asio::async_write(self->socket_,
-            boost::asio::buffer(msg + '\n'),
-            [self](const boost::system::error_code& errorCode, std::size_t)
+            boost::asio::buffer(msg),
+            boost::asio::bind_executor(self->strand_,
+            [self, msg](const boost::system::error_code& errorCode, std::size_t)
             {
                 if (errorCode)
                     self->logger_.log(Severity::warning, "async write failed: " + errorCode.message());
                 else
                     self->logger_.log(Severity::info, "message sent successfully");
-            });
+            }));
     });
 }
 
@@ -106,22 +118,30 @@ void Client::run()
 void Client::stop()
 {
     std::osyncstream(std::cout) << "[" << id_ << "]client stopped\n";
-    if (socket_.is_open())
+
+    auto self = shared_from_this();
+    boost::asio::post(strand_,
+    [this, self]()
     {
         boost::system::error_code errorCode;
-        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, errorCode);
-        if (errorCode)
+
+        if (socket_.is_open())
         {
-            logger_.log(Severity::error, "Error on socket shutdown during disconnect: " + errorCode.message());
-            std::cerr << "Error on socket shutdown during disconnect: " << errorCode.message() << std::endl;
+            socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, errorCode);
+            if (errorCode)
+            {
+                logger_.log(Severity::error, "Error on socket shutdown during disconnect: " + errorCode.message());
+                std::cerr << "Error on socket shutdown during disconnect: " << errorCode.message() << std::endl;
+            }
+
+            socket_.close(errorCode);
+            if (errorCode)
+            {
+                logger_.log(Severity::error, "Error on socket close during disconnect: " + errorCode.message());
+                std::cerr << "Error on socket close during disconnect: " << errorCode.message() << std::endl;
+            }
         }
-        socket_.close(errorCode);
-        if (errorCode)
-        {
-            logger_.log(Severity::error, "Error on socket close during disconnect: " + errorCode.message());
-            std::cerr << "Error on socket close during disconnect: " << errorCode.message() << std::endl;
-        }
-    }
+    });
 }
 
 } // namespace connection::client
