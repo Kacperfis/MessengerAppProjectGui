@@ -32,16 +32,8 @@ jobs:
     - name: Project build
       run: cmake --build ${{env.BUILD_PATH}} --config ${{env.BUILD_TYPE}}
     
-    - name: Debug - List build directory
-      run: |
-        echo "=== Build directory structure ==="
-        ls -la ${{env.BUILD_PATH}}/
-        echo "=== libmessenger directory ==="
-        ls -la ${{env.BUILD_PATH}}/libmessenger/
-        echo "=== libmessenger/tests directory ==="
-        ls -la ${{env.BUILD_PATH}}/libmessenger/tests/
-        echo "=== Looking for test executables ==="
-        find ${{env.BUILD_PATH}} -type f -executable -name "*test*" -o -name "*ut*"
+    - name: Setup test environment
+      run: mkdir -p ${{env.BUILD_PATH}}/ut_logs
     
     - name: Run tests
       working-directory: ${{env.BUILD_PATH}}
