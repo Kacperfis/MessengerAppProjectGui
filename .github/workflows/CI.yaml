@@ -1,0 +1,49 @@
+name: MessengerApp CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Debug
+  BUILD_PATH: ${{github.workspace}}/build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libboost-all-dev libssl-dev lcov gcovr
+
+    - name: CMake setup
+      uses: jwlawson/actions-setup-cmake@v1.14
+      with:
+        cmake-version: '3.22.1'
+    
+    - name: CMake configuration
+      run: cmake -B ${{env.BUILD_PATH}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_GUI=OFF -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+
+    - name: Project build
+      run: cmake --build ${{env.BUILD_PATH}} --config ${{env.BUILD_TYPE}}
+    
+    - name: Run tests
+      working-directory: ${{env.BUILD_PATH}}
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+
+    - name: Generate code coverage report
+      working-directory: ${{env.BUILD_PATH}}
+      run: |
+        gcovr -r .. --exclude '.*Tests.*' --exclude '.*CMakeFiles/.*' --exclude '.*CompilerIdCXX/.*' --filter '.*\.cpp' --xml-pretty --output coverage.xml
+        gcovr -r .. --exclude '.*Tests.*' --exclude '.*CMakeFiles/.*' --exclude '.*CompilerIdCXX/.*' --filter '.*\.cpp' --html --html-details -o coverage.html
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v2
+      with:
+        name: coverage-report
+        path: ${{env.BUILD_PATH}}/coverage.html
