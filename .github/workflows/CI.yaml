@@ -1,3 +1,4 @@
+
 name: MessengerApp CI
 
 on:
@@ -22,7 +23,16 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libboost-all-dev libssl-dev lcov gcovr
+        sudo apt-get install -y libboost-all-dev libssl-dev lcov gcovr libgtest-dev
+
+    - name: Build and Install GoogleTest
+      run: |
+        cd /usr/src/googletest
+        sudo mkdir build
+        cd build
+        sudo cmake ..
+        sudo make
+        sudo cp lib/*.a /usr/lib/
 
     - name: CMake setup
       uses: jwlawson/actions-setup-cmake@v1.14
