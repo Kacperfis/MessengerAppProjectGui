@@ -14,7 +14,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if (MSVC)
     add_compile_options(/W4 /permissive-)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
+    add_compile_options(-Wall -Wextra -Wpedantic -g -O1)
+    # add_compile_options(-fsanitize=thread)
+    # add_link_options(-fsanitize=thread)
+endif()
+
+
+# ── Testing ------------------------------------------------------------------
+if (BUILD_TESTS)
+    include(CTest)
+    enable_testing()
 endif()
 
 # ── External deps ------------------------------------------------------------
@@ -26,14 +35,8 @@ endif()
 
 # ── Sub-projects -------------------------------------------------------------
 add_subdirectory(messengerInterfaces)
-add_subdirectory(libmessenger)     # tworzy bibliotekę „messenger”
+add_subdirectory(libmessenger)     # tworzy bibliotekę „messenger"
 
 if (BUILD_GUI)
     add_subdirectory(gui)          # <-- folder z kodem Qt
-endif()
-
-# ── Testing ------------------------------------------------------------------
-include(CTest)
-if (BUILD_TESTS)
-    enable_testing()
 endif()
