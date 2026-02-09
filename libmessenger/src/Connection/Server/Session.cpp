@@ -3,21 +3,30 @@
 namespace connection::session
 {
 
-Session::Session(boost::asio::io_context& io,
-                 boost::asio::ip::tcp::socket socket, 
-                 std::map<std::string, std::shared_ptr<Session>>& sessions,
-                 std::mutex& sessionsMutex)
+Session::Session(
+    boost::asio::io_context& io,
+    boost::asio::ip::tcp::socket socket,
+    std::shared_ptr<SessionMap> sessions,
+    std::shared_ptr<std::mutex> sessionsMutex)
     : socket_(std::move(socket))
-    , activeSessions_(sessions)
-    , sessionsMutex_(sessionsMutex)
     , strand_(boost::asio::make_strand(io))
-    , encryptionManager_(std::make_shared<encryption::EncryptionManager>("", "0123456789abcdef0123456789abcdef", "0123456789abcdef"))
+    , activeSessions_(std::move(sessions))
+    , sessionsMutex_(std::move(sessionsMutex))
     , logger_("Session") {}
-
 
 void Session::start()
 {
     receive();
+}
+
+void Session::stop()
+{
+    auto self = shared_from_this();
+    boost::asio::post(strand_, [self]() {
+        boost::system::error_code ec;
+        self->socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        self->socket_.close(ec);
+    });
 }
 
 void Session::receive() {
@@ -28,6 +37,12 @@ void Session::receive() {
     {
         if (!errorCode)
         {
+            if (length == 0)
+            {
+                receive();
+                return;
+            }
+
             std::string line(data_.substr(0, length - 1));
             data_.erase(0, length);
 
@@ -42,43 +57,61 @@ void Session::receive() {
             {
                 logger_.log(Severity::info, "successfully established session with " + sender);
                 std::cout << "successfully established session with " + sender << std::endl;
-                username_ = sender;
                 
-                std::set<std::string> activeUsersSet;
                 {
-                    std::lock_guard<std::mutex> lock(sessionsMutex_);
-                    activeSessions_[username_] = self;
-                    for (const auto& activeSession : activeSessions_) 
-                        activeUsersSet.insert(activeSession.first);
+                    std::lock_guard<std::mutex> lock(usernameMutex_);
+                    username_ = sender;
                 }
-                
-                std::lock_guard<std::mutex> lock(sessionsMutex_);
-                for (const auto& activeSession : activeSessions_)
+
+                std::vector<std::pair<std::string, std::shared_ptr<Session>>> sessionsToNotify;
+                std::set<std::string> activeUsersSet;
+
                 {
-                    auto activeUsers = getActiveUsers(activeUsersSet, activeSession.first);
-                    logger_.log(Severity::info, "forwarding check availability message to " + activeSession.first);
-                    std::cout << "forwarding check availability message to " + activeSession.first << std::endl;
-                    std::string forwardMessage = "CHECK_AVAILABILITY|" + sender + "|" + activeSession.first + "|" + activeUsers;
-                    activeSession.second->send(forwardMessage);
+                    std::lock_guard<std::mutex> lock(*sessionsMutex_);
+                    if (activeSessions_->count(sender) > 0)
+                    {
+                        stop();
+                        return;
+                    }
+                    (*activeSessions_)[sender] = self;
+                    for (const auto& [name, session] : *activeSessions_)
+                    {
+                        activeUsersSet.insert(name);
+                        sessionsToNotify.emplace_back(name, session);
+                    }
+                }
+
+                for (const auto& [name, session] : sessionsToNotify)
+                {
+                    auto activeUsers = getActiveUsers(activeUsersSet, name);
+                    std::string forwardMessage = "CHECK_AVAILABILITY|" + sender + "|" + name + "|" + activeUsers;
+                    logger_.log(Severity::info, "forwarding check availability message to " + name);
+                    std::cout << "forwarding check availability message to " + name << std::endl;
+                    session->send(forwardMessage);
                 }
             } 
             else if (type == "RELINQUISH")
             {
-                logger_.log(Severity::info, username_ + " successfully closed session with " + sender);
-                std::cout << username_ + " successfully closed session with " + sender << std::endl;
-                std::lock_guard<std::mutex> lock(sessionsMutex_);
-                activeSessions_.erase(username_);
+                auto currentUsername = self->getUsername();
+                logger_.log(Severity::info, currentUsername + " successfully closed session");
+                std::cout << currentUsername + " successfully closed session" << std::endl;
+
+                {
+                    std::lock_guard<std::mutex> lock(*sessionsMutex_);
+                    activeSessions_->erase(currentUsername);
+                }
+
+                stop();
+                return;
             }
             else if (type == "MESSAGE")
             {
                 std::shared_ptr<Session> recipientSession;
                 {
-                    std::lock_guard<std::mutex> lock(sessionsMutex_);
-                    auto it = activeSessions_.find(recipient);
-                    if (it != activeSessions_.end()) 
-                    {
+                    std::lock_guard<std::mutex> lock(*sessionsMutex_);
+                    auto it = activeSessions_->find(recipient);
+                    if (it != activeSessions_->end())
                         recipientSession = it->second;
-                    }
                 }
                 
                 if (recipientSession) 
@@ -105,8 +138,14 @@ void Session::receive() {
         {
             logger_.log(Severity::info, "connection lost");
             std::cout << "connection lost" << std::endl;
-            std::lock_guard<std::mutex> lock(sessionsMutex_);
-            activeSessions_.erase(username_);
+            auto currentUsername = self->getUsername();
+            if (!currentUsername.empty())
+            {
+                std::lock_guard<std::mutex> lock(*sessionsMutex_);
+                auto it = activeSessions_->find(currentUsername);
+                if (it != activeSessions_->end() && it->second == self)
+                    activeSessions_->erase(it);
+            }
         }
     }));
 }
@@ -133,31 +172,49 @@ std::string Session::getActiveUsers(const std::set<std::string>& activeUsers, co
     return result;
 }
 
+std::string Session::getUsername() const
+{
+    std::lock_guard<std::mutex> lock(usernameMutex_);
+    return username_;
+}
+
 void Session::send(const std::string& data)
 {
-    logger_.log(Severity::info, "about to send to " + username_ + ": " + data);
-    std::cout << "about to send to " + username_ + ": " + data << std::endl;
+    auto currentUsername = getUsername();
+    logger_.log(Severity::info, "about to send to " + currentUsername + ": " + data);
+    std::cout << "about to send to " + currentUsername + ": " + data << std::endl;
 
     auto self = shared_from_this();
-    std::string message = data + "\n";
-    
-    boost::asio::post(strand_,
-    [self, msg = std::move(message)]()
+    auto msg = data + "\n";
+
+    boost::asio::post(self->strand_, [this, self, msg]()
     {
-        boost::asio::async_write(self->socket_, boost::asio::buffer(msg),
-        boost::asio::bind_executor(self->strand_,
-        [self, msg](boost::system::error_code errorCode, std::size_t length)
+        writeQueue_.push_back(msg);
+        if (!isWriting_)
         {
-            if (errorCode)
-            {
-                self->logger_.log(Severity::error, "error sending to " + self->username_ + ": " + errorCode.message());
-            } 
-            else
-            {
-                self->logger_.log(Severity::info, "sent " + std::to_string(length) + " bytes to " + self->username_ + ": " + msg);
-            }
-        }));
+            doWrite();
+        }
     });
+}
+
+void Session::doWrite()
+{
+    if (writeQueue_.empty())
+    {
+        isWriting_ = false;
+        return;
+    }
+
+    isWriting_ = true;
+    auto msg = writeQueue_.front();
+    auto self = shared_from_this();
+    boost::asio::async_write(socket_, boost::asio::buffer(msg),
+        boost::asio::bind_executor(strand_, [this, self](auto ec, auto)
+        {
+            writeQueue_.pop_front();
+            if (!ec)
+                doWrite();
+        }));
 }
 
 } // namespace connection::session

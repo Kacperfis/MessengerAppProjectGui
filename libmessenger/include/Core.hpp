@@ -31,12 +31,11 @@ class ServerCore
 {
 public:
     ServerCore(
-        boost::asio::io_context& io,
         int port,
         const std::string& adminDatabasePath);
     ~ServerCore();
 
-    boost::asio::io_context& io_;
+    // Server owns its own io_context now
     std::shared_ptr<connection::server::Server> server_;
 
     std::shared_ptr<database::AdminDatabaseController> adminDatabaseController_;

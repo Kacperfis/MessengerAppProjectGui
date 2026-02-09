@@ -1,14 +1,14 @@
 #include <QApplication>
 #include "ServerGui.hpp"
+#include <Common/Config/pathConfig.hpp>
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    boost::asio::io_context ioServer;
-    std::string adminPath = "/home/kacper/LibMessengerAppProject/new/libmessenger/src/Database/RegisteredAdminData/";
+    std::string adminPath = config::path::getAdminDatabasePath();
 
-    ServerGui gui(ioServer, adminPath);
+    ServerGui gui(adminPath);
     gui.show();
 
     return app.exec();

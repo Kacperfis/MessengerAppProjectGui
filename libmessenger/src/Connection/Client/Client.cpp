@@ -22,21 +22,33 @@ Client::Client(boost::asio::io_context& io, int id) :
 
 void Client::setEventHandler(ChatEventHandler eventHandler)
 {
+    std::lock_guard<std::mutex> lock(eventHandlerMutex_);
     eventHandler_ = std::move(eventHandler);
 }
 
 void Client::connect(const std::string& host, const std::string& port)
 {
-    std::osyncstream(std::cout) << "[" << id_ << "]client connect\n";
+    boost::system::error_code ec;
+    auto endpoints = resolver_.resolve(host, port, ec);
+    if (ec) {
+        logger_.log(Severity::error, "DNS resolution failed: " + ec.message());
+        return;
+    }
+
+    boost::asio::connect(socket_, endpoints, ec);
+    if (ec) {
+        logger_.log(Severity::error, "Connection failed: " + ec.message());
+        return;
+    }
+
     auto self = shared_from_this();
-    boost::asio::connect(socket_, resolver_.resolve(host, port));
     boost::asio::post(strand_, [this, self]() { readData(); });
 }
 
 void Client::readData()
 {
     auto self = shared_from_this();
-    boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), '\n',
+    boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_, 1024*1024), '\n',
         boost::asio::bind_executor(strand_,
         [this, self](boost::system::error_code errorCode, std::size_t length)
         {
@@ -45,16 +57,19 @@ void Client::readData()
                 logger_.log(Severity::info, "received " + std::to_string(length) + " bytes of data");
                 std::cout <<  "client received " + std::to_string(length) + " bytes of data" << std::endl;
 
-                std::string message;
-                {
-                    std::lock_guard<std::mutex> lock(mtx_);
-                    message = data_.substr(0, length);
-                    data_.erase(0, length);
-                }
+                std::string message = data_.substr(0, length);
+                data_.erase(0, length);
 
                 logger_.log(Severity::info, "received message: " + message);
                 auto decodedMessage = helpers::message::MessageDecoder::decodeMessage(message);
-                helpers::message::MessageHandler::handleMessage(decodedMessage, eventHandler_);
+                
+                ChatEventHandler handlerCopy;
+                {
+                    std::lock_guard<std::mutex> lock(eventHandlerMutex_);
+                    handlerCopy = eventHandler_;
+                }
+                
+                helpers::message::MessageHandler::handleMessage(decodedMessage, handlerCopy);
                 readData();
             }
             else if (errorCode == boost::asio::error::operation_aborted)
@@ -75,22 +90,44 @@ void Client::sendData(const std::string& data)
     std::cout << "client sending " + data << std::endl;
 
     auto self = shared_from_this();
-    std::string message = data + '\n';
+    auto msg = std::make_shared<std::string>(data + '\n');
 
     boost::asio::post(strand_,
-    [self, msg = std::move(message)]()
+    [this, self, msg]()
     {
-        boost::asio::async_write(self->socket_,
-            boost::asio::buffer(msg),
-            boost::asio::bind_executor(self->strand_,
-            [self, msg](const boost::system::error_code& errorCode, std::size_t)
-            {
-                if (errorCode)
-                    self->logger_.log(Severity::warning, "async write failed: " + errorCode.message());
-                else
-                    self->logger_.log(Severity::info, "message sent successfully");
-            }));
+        writeQueue_.push_back(*msg);
+        if (!isWriting_)
+        {
+            doWrite();
+        }
     });
+}
+
+void Client::doWrite()
+{
+    if (writeQueue_.empty())
+    {
+        isWriting_ = false;
+        return;
+    }
+
+    isWriting_ = true;
+    auto& msg = writeQueue_.front();
+    auto self = shared_from_this();
+
+     boost::asio::async_write(self->socket_, boost::asio::buffer(msg),
+        boost::asio::bind_executor(self->strand_,
+        [this, self](const boost::system::error_code& errorCode, std::size_t)
+        {
+            writeQueue_.pop_front();
+            if (errorCode)
+                self->logger_.log(Severity::warning, "async write failed: " + errorCode.message());
+            else
+            {
+                self->logger_.log(Severity::info, "message sent successfully");
+                doWrite();
+            }
+        }));
 }
 
 void Client::login(const std::string& recipient)

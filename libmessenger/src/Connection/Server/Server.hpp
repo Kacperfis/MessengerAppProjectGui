@@ -15,7 +15,7 @@ namespace connection::server
 class Server final
 {
 public:
-    Server(boost::asio::io_context& io, int port);
+    explicit Server(int port);
     ~Server();
     
     void start();
@@ -23,12 +23,13 @@ public:
 private:
     void acceptConnection();
 
-    boost::asio::io_context& ioContext_;
+    boost::asio::io_context ioContext_;
     boost::asio::ip::tcp::acceptor acceptor_;
-    std::map<std::string, std::shared_ptr<session::Session>> activeSessions_;
-    std::mutex sessionsMutex_;
-    std::jthread ioThread_;
+    std::shared_ptr<session::SessionMap> activeSessions_;
+    std::shared_ptr<std::mutex> sessionsMutex_;
     Logger logger_;
+    std::atomic<bool> running_{false};
+    std::jthread ioThread_;
 };
 
 } // namespace connection::server

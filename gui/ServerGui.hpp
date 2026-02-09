@@ -23,7 +23,7 @@ class ServerGui : public QWidget {
     Q_OBJECT
 
 public:
-    ServerGui(boost::asio::io_context& io, const std::string& adminDatabasePath, QWidget* parent = nullptr);
+    ServerGui(const std::string& adminDatabasePath, QWidget* parent = nullptr);
     ~ServerGui();
 
 private slots:
@@ -41,7 +41,6 @@ private:
     void buildMainPage();
     void animatedSwitchTo(QWidget *page);
 
-    boost::asio::io_context& io_;
     std::shared_ptr<messengerapp::ServerCore> serverCore_;
 
     /* --- members --- */
@@ -65,9 +64,6 @@ private:
     QLineEdit* regLoginEdit_;
     QLineEdit* regPasswordEdit_;
     QPushButton* registerBtn_;
-
-    std::jthread serverThread_;
-    std::optional<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> workGuard_;
 };
 
 #endif // SERVERGUI_HPP

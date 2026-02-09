@@ -42,4 +42,19 @@ inline std::string getPathPrefix(const std::filesystem::path& path)
 
 const std::string pathPrefix = getPathPrefix(std::filesystem::current_path());
 
+inline std::string getDatabasePath()
+{
+    return pathPrefix + "libmessenger/src/Database/";
+}
+
+inline std::string getUserDatabasePath()
+{
+    return getDatabasePath() + "RegisteredUserData/";
+}
+
+inline std::string getAdminDatabasePath()
+{
+    return getDatabasePath() + "RegisteredAdminData/";
+}
+
 } // namespace config::path

@@ -3,6 +3,8 @@
 #include <boost/asio.hpp>
 #include <string>
 #include <thread>
+#include <deque>
+#include <mutex>
 
 #include "Encryption/EncryptionManager.hpp"
 #include "Common/Logger.hpp"
@@ -14,7 +16,8 @@ namespace connection::client
 class Client : public std::enable_shared_from_this<Client>
 {
 public:
-    Client(boost::asio::io_context& io, int id);
+    // NOTE: MUST be created via std::make_shared — uses shared_from_this() internally.
+    explicit Client(boost::asio::io_context& io, int id);
 
     void setEventHandler(ChatEventHandler handler);
     void connect(const std::string& host, const std::string& port);
@@ -26,6 +29,8 @@ public:
     void stop();
 
 private:
+
+    void doWrite();
     void readData();
     void sendData(const std::string& data);
 
@@ -35,11 +40,14 @@ private:
     boost::asio::ip::tcp::resolver resolver_;
     std::shared_ptr<encryption::EncryptionManager> encryptionManager_;
 
+    std::deque<std::string> writeQueue_;
+    bool isWriting_ = false;
+
+    mutable std::mutex eventHandlerMutex_;
     ChatEventHandler eventHandler_;
 
     int id_;
     std::string data_;
-    std::mutex mtx_;
     Logger logger_;
 };
 

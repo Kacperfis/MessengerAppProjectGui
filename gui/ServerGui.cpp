@@ -5,12 +5,10 @@
 #include <QMessageBox>
 #include <QMetaObject>
 
-ServerGui::ServerGui(boost::asio::io_context& io, const std::string& adminDatabasePath, QWidget *parent)
+ServerGui::ServerGui(const std::string& adminDatabasePath, QWidget *parent)
     : QWidget(parent),
-      io_(io),
-      serverCore_(std::make_shared<messengerapp::ServerCore>(io, 8080, adminDatabasePath))
+      serverCore_(std::make_shared<messengerapp::ServerCore>(8080, adminDatabasePath))
 {
-    workGuard_.emplace(boost::asio::make_work_guard(io_));
 
     /* ----- basic window setup ----- */
     setWindowTitle("MessengerApp Server");
@@ -83,11 +81,6 @@ ServerGui::~ServerGui()
     if (serverCore_)
     {
         serverCore_->stopServer();
-    }
-    workGuard_.reset();
-    if (serverThread_.joinable())
-    {
-        serverThread_.join();
     }
 }
 
@@ -250,18 +243,8 @@ void ServerGui::onRegistrationClicked()
 
 void ServerGui::onStartServerClicked()
 {
-    if (serverThread_.joinable()) 
-    {
-        QMessageBox::information(this, "Server Running", "Server is already running.");
-        return;
-    }
-
+    // Server manages its own threading now
     serverCore_->startServer();
-    serverThread_ = std::jthread([this]
-    {
-        io_.run();
-    });
-
     QMessageBox::information(this, "Server Started", "Server has been started.");
 }
 
@@ -271,11 +254,6 @@ void ServerGui::onStopServerClicked()
     {
         serverCore_->stopServer();
         QMessageBox::information(this, "Server Stopped", "Server has been stopped.");
-    }
-    workGuard_.reset();
-    if (serverThread_.joinable())
-    {
-        serverThread_.join();
     }
 }
 
