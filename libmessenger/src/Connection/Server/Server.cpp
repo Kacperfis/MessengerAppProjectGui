@@ -27,16 +27,19 @@ Server::~Server()
         session->stop();
 
     if (!ioContext_.stopped())
+    {
+        logger_.log(Severity::info, "stopping io_context");
         ioContext_.stop();
+    }
 }
 void Server::acceptConnection()
 {
     acceptor_.async_accept(
-    [this](boost::system::error_code errorCode, boost::asio::ip::tcp::socket socket)
+    [this](boost::system::error_code ec, boost::asio::ip::tcp::socket socket)
     {
-        if (errorCode == boost::asio::error::operation_aborted) return;
+        if (ec == boost::asio::error::operation_aborted) return;
 
-        if (!errorCode)
+        if (!ec)
         {
             auto session = std::make_shared<session::Session>(ioContext_, std::move(socket), activeSessions_, sessionsMutex_);
             session->start();
@@ -68,6 +71,11 @@ void Server::stop()
 {
     boost::system::error_code ec;
     acceptor_.close(ec);
+    if (ec)
+    {
+        logger_.log(Severity::warning, "Error closing acceptor: " + ec.message());
+    }
+
     if (!ioContext_.stopped())
     {
         ioContext_.stop();
