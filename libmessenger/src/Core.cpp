@@ -86,10 +86,8 @@ bool ClientCore::registerAdmin(const std::string& login, const std::string& pass
 void ClientCore::startClient(const std::string& host, const std::string& port)
 {
     if (clientThread_.joinable())
-    {
-        std::cout << "client thread is joinable" << std::endl;
         return;
-    }
+
     client_->connect(host, port);
     clientThread_ = std::jthread([this]{
         client_->run();

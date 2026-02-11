@@ -243,7 +243,6 @@ void ServerGui::onRegistrationClicked()
 
 void ServerGui::onStartServerClicked()
 {
-    // Server manages its own threading now
     serverCore_->startServer();
     QMessageBox::information(this, "Server Started", "Server has been started.");
 }

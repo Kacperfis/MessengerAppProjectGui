@@ -28,10 +28,14 @@ public:
     void start();
     void stop();
 private:
-    std::string getActiveUsers(const std::set<std::string>& activeUsers, const std::string& username);
     void send(const std::string& data);
     void receive();
     void doWrite();
+    std::string getActiveUsers(const std::set<std::string>& activeUsers, const std::string& username);
+    void checkUsersAvailability(
+        std::set<std::string> activeUsersSet,
+        std::vector<std::pair<std::string, std::shared_ptr<Session>>> sessionsToNotify,
+        const std::string& sender);
 
     std::string getUsername() const;
 

@@ -355,10 +355,13 @@ void ClientGui::handleChatEvent(const ChatEvent &ev)
     }
     else if (ev.type == Type::STANDARD_MESSAGE)
     {
-        QString timestamp = QDateTime::currentDateTime().toString("[hh:mm:ss] ");
-        history_->append(timestamp + QString::fromStdString(ev.sender) + ": "
-                         + QString::fromStdString(ev.message));
-        history_->append("");
+        if (!currentRecipient_.empty() && currentRecipient_ == ev.sender)
+        {
+            QString timestamp = QDateTime::currentDateTime().toString("[hh:mm:ss] ");
+            history_->append(timestamp + QString::fromStdString(ev.sender) + ": "
+                            + QString::fromStdString(ev.message));
+            history_->append("");
+        }
     }
 }
 
@@ -378,10 +381,5 @@ void ClientGui::onLeaveChatClicked()
     history_->clear();
     chatPartnerLabel_->clear();
     currentRecipient_.clear();
-    if (!currentUserLogin_.empty())
-    {
-        clientCore_->leaveChat(currentUserLogin_);
-    }
     animatedSwitchTo(usersPage_);
-    clientCore_->joinChat(currentUserLogin_);
 }
